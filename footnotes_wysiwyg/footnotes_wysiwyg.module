@@ -2,35 +2,10 @@
 
 /**
  * @file
- * WYSIWYG support for the footnotes module.
- * Currently this supports TinyMCE and CKEditor via the WYSIWYG module and
- * CKEditor via the CKEditor module.
+ * Direct CKEditor 4, CKEditor 5 and TinyMCE integration for the Footnotes module.
+ *
+ * Does not integrate with the legacy WYSIWYG module.
  */
-
-/**
- * Implements hook_wysiwyg_plugin().
- */
-function footnotes_wysiwyg_wysiwyg_plugin($editor, $version) {
-  $plugin = array(
-    'footnotes' => array(
-      'buttons' => array('footnotes' => t('Add Footnote')),
-      'basePath' => base_path(),
-      // This is required to auto-load the plugin.
-      'load' => TRUE,
-    ),
-  );
-  switch ($editor) {
-    case 'tinymce':
-      $plugin['footnotes']['filename'] = 'editor_plugin.js';
-      $plugin['footnotes']['path'] = backdrop_get_path('module', 'footnotes_wysiwyg') . '/tinymce_plugin/';
-      $plugin['footnotes']['extended_valid_elements'] = array('fn');
-      return $plugin;
-    case 'ckeditor':
-      // For CKEditor, path is the directory and the .js file must be called 'plugin.js'.
-      $plugin['footnotes']['path'] = backdrop_get_path('module', 'footnotes_wysiwyg') . '/ckeditor_plugin/';
-      return $plugin;
-  }
-}
 
 /**
  * Implements hook_ckeditor_plugins().
@@ -56,6 +31,33 @@ function footnotes_wysiwyg_ckeditor_plugins() {
 }
 
 /**
+ * Implements hook_tinymce_external_plugins().
+ *
+ * Registers the native TinyMCE plugin, without a Backdrop dialog endpoint.
+ * The external-plugin definition must be verified against the installed
+ * TinyMCE module version before this integration is released.
+ */
+function footnotes_wysiwyg_tinymce_external_plugins($format) {
+  $path = backdrop_get_path('module', 'footnotes_wysiwyg');
+
+  return array(
+    'backdropfootnotes' => array(
+      'plugin_path' => base_path() . $path . '/tinymce_plugin/plugin.js',
+      'icons' => array(
+        'backdropfootnotes' => 'backdropfootnotes.svg',
+      ),
+      'buttons' => array(
+        'backdropfootnotes' => array(
+          'icon' => 'backdropfootnotes',
+          'tooltip' => t('Insert footnote'),
+          'required_tags' => array(),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
  * Implements hook_menu().
  */
 function footnotes_wysiwyg_menu() {
@@ -72,7 +74,7 @@ function footnotes_wysiwyg_menu() {
 }
 
 /**
- * Form callback: Display a form for inserting/editing a link or uploading a file.
+ * Form callback: Displays the existing CKEditor footnote dialog.
  */
 function footnotes_wysiwyg_footnote_editor_form($form, &$form_state, $format) {
   $form_state['format'] = $format;
@@ -119,7 +121,7 @@ function footnotes_wysiwyg_footnote_editor_form($form, &$form_state, $format) {
 }
 
 /**
- * Implements hook_ckeditor_settings_alter().
+ * Existing legacy submit callback; retained for compatibility.
  */
 function footnotes_filter_format_editor_form_submit($form, &$form_state) {
   $form_state['values']['attributes']['footnote_text'] = $form_state['values']['footnote_text'];
@@ -132,4 +134,66 @@ function footnotes_filter_format_editor_form_submit($form, &$form_state) {
 function footnotes_wysiwyg_ckeditor_settings_alter(&$settings, $format) {
   $link_token = filter_editor_dialog_token($format, 'footnotes');
   $settings['backdrop']['footnotesDialogUrl'] = url('editor/dialog/footnotes/' . $format->format, array('query' => array('token' => $link_token, 'calling_path' => $_GET['q'])));
+}
+
+/**
+ * Implements hook_ckeditor5_plugins().
+ */
+function footnotes_wysiwyg_ckeditor5_plugins() {
+  $path = backdrop_get_path('module', 'footnotes_wysiwyg');
+  return array(
+    'backdropFootnotes.Footnotes' => array(
+      'library' => array('footnotes_wysiwyg', 'footnotes_wysiwyg.ckeditor5'),
+      'buttons' => array(
+        'footnotes' => array(
+          'label' => t('Insert footnote'),
+          'image' => $path . '/ckeditor5_plugin/icons/footnotes.svg',
+          'required_html' => array(),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_library_info().
+ */
+function footnotes_wysiwyg_library_info() {
+  $path = backdrop_get_path('module', 'footnotes_wysiwyg');
+  return array(
+    'footnotes_wysiwyg.ckeditor5' => array(
+      'title' => 'Footnotes integration for CKEditor 5',
+      'version' => '1.0.0',
+      'js' => array(
+        $path . '/ckeditor5_plugin/plugin.js' => array('preprocess' => FALSE),
+      ),
+      'css' => array(
+        $path . '/ckeditor5_plugin/dialog.css' => array(),
+      ),
+      'dependencies' => array(array('ckeditor5', 'ckeditor5')),
+    ),
+  );
+}
+
+/**
+ * Implements hook_ckeditor5_config_alter().
+ */
+function footnotes_wysiwyg_ckeditor5_config_alter(array &$config, $format) {
+  $config['backdropFootnotes'] = array(
+    'insertLabel' => t('Insert footnote'),
+    'textLabel' => t('Footnote text'),
+    'valueLabel' => t('Footnote value (optional)'),
+    'saveLabel' => t('Insert'),
+    'cancelLabel' => t('Cancel'),
+    'emptyTextMessage' => t('Enter a footnote text.'),
+    'nestedFootnoteMessage' => t('Footnote text must not contain footnote tags.'),
+    'invalidValueMessage' => t('The footnote value contains invalid characters.'),
+  );
+}
+
+/**
+ * Implements hook_ckeditor5_upgrade_button_mapping().
+ */
+function footnotes_wysiwyg_ckeditor5_upgrade_button_mapping() {
+  return array('footnotes' => 'footnotes');
 }
