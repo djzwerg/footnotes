@@ -1,58 +1,44 @@
 /**
  * @file
- * Footnotes plugin.
+ * CKEditor 4 Footnotes insertion using the shared Backdrop dialog.
  */
-
 (function ($, Backdrop, CKEDITOR) {
-
-"use strict";
-
-CKEDITOR.plugins.add('footnotes', {
-  init: function (editor) {
-    // Add the commands for footnotes.
-    editor.addCommand('footnotes', {
-      canUndo: true,
-      exec: function (editor) {
-        // @Todo: allow editing existing footnote tags.
-        var existingValues = {};
-        existingValues.text = '';
-        // Prepare a save callback to be used upon saving the dialog.
-        var saveCallback = function (returnValues) {
-          editor.fire('saveSnapshot');
-
-          var footnoteText = returnValues.attributes.footnote_text;
-          var footnoteValue = returnValues.attributes.footnote_value;
-          var openFnTag = '[fn]';
-          if (footnoteValue) {
-            openFnTag = '[fn value="' + footnoteValue + '"]';
-          }
-
-          editor.insertText(openFnTag + footnoteText + '[/fn]');
-
-          // Save snapshot for undo support.
-          editor.fire('saveSnapshot');
-        };
-        // Backdrop.t() will not work inside CKEditor plugins because CKEditor
-        // loads the JavaScript file instead of Backdrop. Pull translated strings
-        // from the plugin settings that are translated server-side.
-        var dialogSettings = {
-          dialogClass: 'editor-footnote-dialog'
-        };
-
-        // Open the dialog for the edit form.
-        Backdrop.ckeditor.openDialog(editor, editor.config.backdrop.footnotesDialogUrl, existingValues, saveCallback, dialogSettings);
-      }
-    });
-    // Add buttons for footnotes.
-    if (editor.ui.addButton) {
+  'use strict';
+  CKEDITOR.plugins.add('footnotes', {
+    init: function (editor) {
+      var settings = editor.config.backdrop;
+      editor.addCommand('footnotes', {
+        canUndo: true,
+        exec: function () {
+          var selection = editor.getSelection();
+          var bookmarks = selection.createBookmarks2(true);
+          var original = editor.getData();
+          var existingValues = {
+            footnote_text: selection.getSelectedText(),
+            footnote_value: ''
+          };
+          Backdrop.ckeditor.openDialog(editor, settings.footnotesDialogUrl, existingValues, function (result) {
+            if (editor.status === 'destroyed' || editor.readOnly) { return; }
+            if (editor.getData() !== original) {
+              window.alert(settings.footnotesChangedMessage);
+              return;
+            }
+            var values = result.attributes;
+            var markup = '[fn' + (values.footnote_value ? ' value="' + values.footnote_value + '"' : '') +
+              ']' + values.footnote_text + '[/fn]';
+            editor.fire('saveSnapshot');
+            editor.focus();
+            editor.getSelection().selectBookmarks(bookmarks);
+            editor.insertText(markup);
+            editor.fire('saveSnapshot');
+          }, { dialogClass: 'editor-footnote-dialog' });
+        }
+      });
       editor.ui.addButton('footnotes', {
-        label: Backdrop.t('Insert footnote'),
+        label: settings.footnotesButtonLabel,
         command: 'footnotes',
-        icon: this.path + 'images/footnotes.png'
+        icon: settings.footnotesIconUrl
       });
     }
-
-  }
-});
-
+  });
 })(jQuery, Backdrop, CKEDITOR);

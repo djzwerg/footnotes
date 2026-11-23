@@ -1,5 +1,5 @@
 name = "Footnotes Wysiwyg"
-description = "Add a footnote button to Wysiwyg editors (TinyMCE, CKEditor). Currently supports the WYSIWYG and CKEditor modules."
+description = "Adds a footnote insertion button and a shared Backdrop dialog to CKEditor 4, CKEditor 5 and TinyMCE."
 package = Footnotes
 dependencies[] = footnotes
 backdrop = 1.x
