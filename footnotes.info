@@ -4,3 +4,7 @@ backdrop = 1.x
 package = Footnotes
 type = module
 stylesheets[all][] = css/footnotes.css
+
+tags[] = content
+tags[] = editors
+tags[] = filters
